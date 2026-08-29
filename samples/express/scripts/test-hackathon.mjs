@@ -6,6 +6,7 @@ import {
   normalizeScenario,
   normalizeScore,
   parseLlmJson,
+  patientMessages,
 } from "../lib/hackathon.mjs";
 
 const input = {
@@ -36,6 +37,14 @@ const scenario = normalizeScenario(
 );
 assert.equal(scenario.scenario_type, "unnecessary_request");
 assert.equal(scenario.encounter_history.length, 2);
+const patientPrompt = patientMessages(
+  scenario,
+  { trust: "low", anxiety: "high", cooperation: "low" },
+  [{ role: "clinician", text: "請說明需求" }],
+)[0].content;
+assert.match(patientPrompt, /明顯不耐、懷疑或施壓/);
+assert.match(patientPrompt, /不能因一次普通道歉就立刻緩和/);
+assert.match(patientPrompt, /不得威脅暴力、歧視、髒話或人身羞辱/);
 assert.equal(
   dialoguePayloadError({
     scenario,

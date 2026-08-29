@@ -1,5 +1,5 @@
 /**
- * Hackathon demo — scenario generation, Local LLM patient, Perxona presenter,
+ * Hackathon demo — scenario generation, LLM patient, Perxona presenter,
  * and structured communication feedback. No RAG and no Connect Chatbot.
  */
 
@@ -405,7 +405,7 @@ async function start() {
     app.config = config;
     renderOptions(config.scenarioTypes);
     if (!config.llmConfigured) {
-      throw new Error("請先在 .env 設定 Local LLM 的 API Key、Base URL 與 Model");
+      throw new Error("請先在 .env 設定 LLM 的 API Key、Base URL 與 Model");
     }
     if (!config.fixedTarget) {
       throw new Error("請先在 .env 設定固定的 Avatar、Scene 與 Voice ID");
@@ -414,7 +414,8 @@ async function start() {
     const { connect_key: connectKey } = await request("/api/connect-key");
     await presenter.initializeWithConnectKey(connectKey, config.fixedTarget);
     connection.dataset.state = "ready";
-    connectionText.textContent = `Local LLM：${config.llmModel}`;
+    connectionText.textContent =
+      `${config.llmProvider.toUpperCase()}：${config.llmModel ?? "預設模型"}`;
   } catch (error) {
     connection.dataset.state = "error";
     connectionText.textContent = "設定尚未完成";
