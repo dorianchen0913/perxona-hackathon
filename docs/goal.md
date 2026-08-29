@@ -180,23 +180,17 @@ Scoring Agent 接收 `structured_scenario + 原始對話紀錄`，只評估溝�
 
 ### 報告中的產品擴充方向
 
-正式產品可加入經醫療專業審核的知識庫：
+![報告方向的完整系統流程圖](assets/流程圖.png)
 
-```text
-專業教材
-→ chunk / embedding
-→ PostgreSQL + pgvector
+正式產品可加入經醫療專業審核的知識庫，流程分為三條資料線：
 
-structured_scenario
-→ RAG 查詢
-→ relevant chunks
+1. **情境生成**：診所條件與使用者選擇交給 Scenario Generation Agent，產生 `structured_scenario`。
+2. **知識檢索**：專業教材經 chunk、embedding 後存入 PostgreSQL + pgvector；RAG 再依 `structured_scenario` 取得 `relevant_chunks`。
+3. **對話與評分**：Patient Agent 依 scenario 進行 Avatar 對話，對話結束後產生 `structured_dialogue_summary`；Scoring Agent 結合摘要與 `relevant_chunks` 輸出分數與回饋。
 
-structured_scenario + structured_dialogue_summary + relevant chunks
-→ Scoring Agent
-→ 有依據且可追溯的評分與回饋
-```
+RAG 用於提供 Scoring Agent 與本次情境相關的溝通原則及評分依據，不直接介入 Patient Agent 的每輪回答，也不控制 Perxona motion。
 
-產品版可在評分前先產生 `structured_dialogue_summary`；目前 Demo 則直接將原始對話紀錄交給 Scoring Agent，並由該 Agent 同時產生摘要與評分。RAG 主要用於提供與情境相關的溝通原則及評分依據；目前 Demo 先以固定 prompt 驗證情境生成、Avatar 互動與評分流程。
+目前 Demo 尚未實作 RAG 與獨立摘要步驟，而是直接將原始對話紀錄交給 Scoring Agent，並由該 Agent 同時產生摘要與評分。Demo 先以固定 prompt 驗證情境生成、Avatar 互動與評分流程。
 
 ## 9. 核心產品差異與 Why Perxona
 

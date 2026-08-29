@@ -116,24 +116,21 @@ DEMO_FIXED_VOICE_ID=your_voice_id
 
 評分只針對溝通表現，不判斷醫療決策正確性。
 
-## 報告方向：加入 RAG
+## 報告方向：以專業知識 RAG 支援評分
 
-黑客松 Demo 先驗證「生成情境 → Avatar 對話 → 溝通評分」。正式產品可加入經醫療專業審核的知識庫，讓評分依據可維護且可追溯。
+![報告方向的完整系統流程圖](docs/assets/流程圖.png)
 
-```mermaid
-flowchart LR
-    K[專業教材] --> CH[Chunk 與 Embedding]
-    CH --> DB[(PostgreSQL + pgvector)]
-    SS[structured_scenario] --> R[RAG]
-    DB --> R
-    R --> RC[relevant chunks]
-    SS --> SC[Scoring Agent]
-    DS[structured_dialogue_summary] --> SC
-    RC --> SC
-    SC --> O[有依據且可追溯的評分]
-```
+報告版本會在目前 Agent 流程之外加入經醫療專業審核的知識庫，讓評分依據可維護且可追溯。流程重點如下：
 
-RAG、向量資料庫、真實病歷串接及跨場次狀態保存不在目前 Demo 範圍內。
+1. 診所條件與使用者選擇先交給 Scenario Generation Agent，產生 `structured_scenario`。
+2. 專業教材經 chunk、embedding 後存入 PostgreSQL + pgvector。
+3. RAG 依 `structured_scenario` 檢索與本次情境相關的 `relevant_chunks`。
+4. Patient Agent 依 scenario 與醫師進行 Avatar 對話，對話結束後產生 `structured_dialogue_summary`。
+5. Scoring Agent 結合 `structured_dialogue_summary + relevant_chunks`，輸出有依據的分數與回饋。
+
+RAG 的角色是提供 Scoring Agent 專業溝通原則與評分依據，不直接控制 Patient Agent 的每輪回覆，也不負責 Perxona motion。
+
+目前 Demo 尚未實作 RAG 與獨立摘要步驟，而是直接將原始對話紀錄交給 Scoring Agent，由其同時產生摘要與評分。向量資料庫、真實病歷串接及跨場次狀態保存也不在目前 Demo 範圍內。
 
 ## 測試
 
