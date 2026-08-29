@@ -1,4 +1,16 @@
 import express from "express";
+import {
+  SCENARIO_TYPES,
+  dialoguePayloadError,
+  hackathonInputError,
+  normalizePatientTurn,
+  normalizeScenario,
+  normalizeScore,
+  parseLlmJson,
+  patientMessages,
+  scenarioMessages,
+  scoreMessages,
+} from "./lib/hackathon.mjs";
 
 // ── Config ──────────────────────────────────────────────────
 
@@ -708,7 +720,7 @@ const LLM_DEFAULTS = {
   },
 };
 
-function llmRequestConfig(messages) {
+function llmRequestConfig(messages, json = false) {
   const fallback = LLM_DEFAULTS[LLM_PROVIDER] ?? LLM_DEFAULTS.openai;
   const model = process.env.LLM_MODEL ?? fallback.model;
   if (LLM_PROVIDER === "anthropic") {
@@ -740,18 +752,22 @@ function llmRequestConfig(messages) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${LLM_API_KEY}`,
     },
-    body: { model, messages },
+    body: {
+      model,
+      messages,
+      ...(json ? { response_format: { type: "json_object" } } : {}),
+    },
   };
 }
 
-async function requestLlmCompletion(messages) {
+async function requestLlmCompletion(messages, json = false) {
   if (LLM_PROVIDER !== "openai" && LLM_PROVIDER !== "anthropic") {
     throw Object.assign(
       new Error("LLM_PROVIDER must be either 'openai' or 'anthropic'."),
       { status: 500 },
     );
   }
-  const request = llmRequestConfig(messages);
+  const request = llmRequestConfig(messages, json);
   const response = await fetch(request.url, {
     method: "POST",
     headers: request.headers,
@@ -772,6 +788,18 @@ function llmResponseText(payload) {
     return payload.content?.find(({ type }) => type === "text")?.text;
   }
   return payload.choices?.[0]?.message?.content;
+}
+
+async function requestLlmJson(messages) {
+  const payload = await requestLlmCompletion(messages, true);
+  const responseText = llmResponseText(payload);
+  if (!responseText) {
+    throw Object.assign(
+      new Error("LLM returned an empty response."),
+      { status: 502 },
+    );
+  }
+  return parseLlmJson(responseText);
 }
 
 function openAiCompatibleResponse(payload) {
@@ -1041,6 +1069,85 @@ app.post(
       return;
     }
     res.json(await api.chatWithChatbot(id, messages, CONNECT_SECRET_KEY));
+  }),
+);
+
+// ── Hackathon demo: configured LLM, no RAG ────────────────────────────────
+
+function requireHackathonLlm(res) {
+  if (LLM_API_KEY) return true;
+  res.status(501).json({
+    error: "LLM is not configured.",
+    message: "Set LLM_API_KEY, LLM_BASE_URL and LLM_MODEL in .env, then restart.",
+  });
+  return false;
+}
+
+app.get(
+  "/api/hackathon/config",
+  route(async (_req, res) => {
+    res.json({
+      llmConfigured: Boolean(LLM_API_KEY),
+      llmProvider: LLM_PROVIDER,
+      llmModel: process.env.LLM_MODEL ?? null,
+      presenterUrl: PRESENTER_URL,
+      fixedTarget: await resolveTarget(),
+      scenarioTypes: SCENARIO_TYPES,
+    });
+  }),
+);
+
+app.post(
+  "/api/hackathon/scenario",
+  route(async (req, res) => {
+    if (!requireHackathonLlm(res)) return;
+    const invalid = hackathonInputError(req.body);
+    if (invalid) {
+      res.status(400).json({ error: invalid });
+      return;
+    }
+    const raw = await requestLlmJson(scenarioMessages(req.body));
+    res.json({ scenario: normalizeScenario(raw, req.body) });
+  }),
+);
+
+app.post(
+  "/api/hackathon/patient",
+  route(async (req, res) => {
+    if (!requireHackathonLlm(res)) return;
+    const invalid = dialoguePayloadError(req.body, true);
+    if (invalid) {
+      res.status(400).json({ error: invalid });
+      return;
+    }
+    const state = {
+      ...req.body.scenario.initial_state,
+      ...(req.body.state ?? {}),
+    };
+    const raw = await requestLlmJson(
+      patientMessages(req.body.scenario, state, req.body.history),
+    );
+    res.json(normalizePatientTurn(raw, state));
+  }),
+);
+
+app.post(
+  "/api/hackathon/score",
+  route(async (req, res) => {
+    if (!requireHackathonLlm(res)) return;
+    const invalid = dialoguePayloadError(req.body);
+    if (invalid) {
+      res.status(400).json({ error: invalid });
+      return;
+    }
+    if (req.body.history.length < 2) {
+      res.status(400).json({ error: "At least one dialogue exchange is required." });
+      return;
+    }
+    const raw = await requestLlmJson(
+      scoreMessages(req.body.scenario, req.body.history),
+    );
+    res.json(normalizeScore(raw));
   }),
 );
 

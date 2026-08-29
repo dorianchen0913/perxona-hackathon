@@ -59,7 +59,7 @@
   <body>
     <h1>Perxona Connect Kit — Demos</h1>
     <p>
-      Two demos. Both hold a conversation the avatar speaks aloud, on the same
+      Three demos. All hold a conversation the avatar speaks aloud, on the same
       backend in <code>server.mjs</code> and the same
       <code>&lt;sv-presenter&gt;</code> component — what differs is which side
       of the work you are looking at. <strong>Take them in order:</strong> the
@@ -89,6 +89,15 @@
           press <strong>Save</strong> on the form it opens for you, then come
           back here.
         </span>
+      </li>
+      <li>
+        <a href="demos/hackathon/">診間練習室</a>
+        <span class="badge">Hackathon</span> —
+        <strong>Local LLM 虛擬病人訓練。</strong>輸入診所條件並選擇三種困難溝通情境之一，
+        即時生成病例、和 Perxona Avatar 對話，再取得結構化溝通評分。
+        此 Demo 不需要 Connect Chatbot，但需先在 <code>.env</code> 設定
+        <code>LLM_API_KEY</code>、<code>LLM_BASE_URL</code> 與
+        <code>LLM_MODEL</code>。
       </li>
     </ul>
     <!-- The one thing this page checks. Embed consumes a chatbot; Studio is

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "avatarId": "REPLACE_WITH_AVATAR_ID",
+  "defaultBehavior": "auto",
+  "motions": [
+    {
+      "key": "greeting",
+      "motionId": "REPLACE_WITH_CATALOG_MOTION_ID",
+      "label": "揮手問候",
+      "delivery": "markup",
+      "when": "正式開場或首次歡迎"
+    },
+    {
+      "key": "empathy",
+      "motionId": "REPLACE_WITH_CATALOG_MOTION_ID",
+      "label": "同理回應",
+      "delivery": "markup",
+      "when": "使用者表達挫折後的短句"
+    },
+    {
+      "key": "celebrate",
+      "motionId": "REPLACE_WITH_CATALOG_MOTION_ID",
+      "label": "完成慶祝",
+      "delivery": "standalone",
+      "when": "任務完成後獨立播放"
+    }
+  ]
+}

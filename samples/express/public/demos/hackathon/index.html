@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="以 Perxona Avatar 與 Local LLM 進行困難醫療溝通訓練"
+    />
+    <title>診間練習室｜Perxona Avatar</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">診間練習室</a>
+      <div class="connection" id="connection-status" data-state="loading">
+        <span class="connection__dot"></span>
+        <span id="connection-text">正在連接服務</span>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="intro">
+        <p class="eyebrow">PERXONA × LOCAL LLM</p>
+        <h1>和虛擬病人練習困難溝通</h1>
+        <p>
+          輸入診所條件、選擇一種常見衝突，由模型即時生成病人與病例背景；完成對話後取得結構化回饋。
+        </p>
+      </section>
+
+      <ol class="steps" aria-label="操作進度">
+        <li class="is-active" data-step="setup"><span>1</span>設定</li>
+        <li data-step="scenario"><span>2</span>病例</li>
+        <li data-step="simulation"><span>3</span>對話</li>
+        <li data-step="result"><span>4</span>回饋</li>
+      </ol>
+
+      <p id="notice" class="notice" role="status" hidden></p>
+
+      <section id="setup-panel" class="panel stage-panel">
+        <div class="panel__heading">
+          <div>
+            <p class="kicker">STEP 1</p>
+            <h2>診所條件與練習情境</h2>
+          </div>
+          <p>以下資料只用於生成虛構案例，請勿輸入真實病人個資。</p>
+        </div>
+
+        <form id="setup-form">
+          <div class="form-grid">
+            <label>
+              科別與服務
+              <textarea
+                name="specialty_services"
+                rows="3"
+                required
+              >家醫科門診，提供一般疾病評估、慢性病追蹤與預防保健。</textarea>
+            </label>
+            <label>
+              可用資源
+              <textarea
+                name="available_resources"
+                rows="3"
+                required
+              >基本理學檢查、常規抽血、衛教與轉診追蹤。</textarea>
+            </label>
+            <label>
+              無法提供的資源
+              <textarea
+                name="unavailable_resources"
+                rows="3"
+                required
+              >現場沒有進階影像檢查，也無法保證立即安排專科。</textarea>
+            </label>
+            <label>
+              平均看診時間
+              <input name="average_visit_time" value="每位病人約 10 分鐘" required />
+            </label>
+            <label>
+              轉診／追蹤方式（選填）
+              <input name="referral_followup" placeholder="例如：一週後回診或轉介專科" />
+            </label>
+            <label>
+              現場壓力（選填）
+              <input name="situational_pressure" placeholder="例如：候診人數多、即將休診" />
+            </label>
+          </div>
+
+          <fieldset>
+            <legend>選擇今天要練習的情境</legend>
+            <div id="scenario-options" class="scenario-options"></div>
+          </fieldset>
+
+          <div class="actions actions--end">
+            <button id="generate-btn" class="button button--primary" type="submit">
+              生成虛擬病例
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section id="scenario-panel" class="panel stage-panel" hidden>
+        <div class="panel__heading">
+          <div>
+            <p class="kicker">STEP 2</p>
+            <h2>病例摘要</h2>
+          </div>
+          <p>隱藏需求與揭露條件不會顯示，請在對話中自行探索。</p>
+        </div>
+        <div id="scenario-summary" class="summary-grid"></div>
+        <div class="actions">
+          <button id="back-btn" class="button button--ghost" type="button">返回修改</button>
+          <button id="regenerate-btn" class="button button--ghost" type="button">重新生成</button>
+          <button id="start-btn" class="button button--primary" type="button" disabled>
+            Avatar 載入中
+          </button>
+        </div>
+      </section>
+
+      <section id="simulation-panel" class="simulation stage-panel" hidden>
+        <div class="avatar-card">
+          <div id="presenter-stage" class="presenter-stage">
+            <sv-presenter></sv-presenter>
+            <div id="presenter-loading" class="presenter-overlay">
+              <span class="loader"></span>
+              正在載入虛擬病人
+            </div>
+            <div id="presenter-error" class="presenter-overlay presenter-overlay--error" hidden></div>
+          </div>
+          <div class="patient-bar">
+            <div>
+              <strong id="patient-name">模擬病人</strong>
+              <span id="patient-meta">—</span>
+            </div>
+            <span id="patient-state" class="state-chip">建立對話中</span>
+          </div>
+        </div>
+
+        <div class="chat-card">
+          <div class="chat-card__heading">
+            <div>
+              <p class="kicker">STEP 3</p>
+              <h2 id="simulation-title">問診練習</h2>
+            </div>
+            <button id="finish-btn" class="button button--small" type="button">
+              結束並評分
+            </button>
+          </div>
+          <ul id="chat-log" class="chat-log" aria-live="polite"></ul>
+          <form id="chat-form" class="chat-form">
+            <label class="sr-only" for="chat-input">回應病人</label>
+            <textarea
+              id="chat-input"
+              rows="2"
+              maxlength="1000"
+              placeholder="以醫療人員身分回應病人……"
+              required
+            ></textarea>
+            <button id="send-btn" class="button button--primary" type="submit">送出</button>
+          </form>
+          <p class="chat-hint">Enter 送出，Shift + Enter 換行。建議完成 3–5 輪對話。</p>
+        </div>
+      </section>
+
+      <section id="result-panel" class="panel stage-panel" hidden>
+        <div class="result-hero">
+          <div>
+            <p class="kicker">STEP 4</p>
+            <h2>溝通回饋</h2>
+          </div>
+          <div class="total-score"><strong id="total-score">—</strong><span>/ 8</span></div>
+        </div>
+        <div id="score-summary" class="score-summary"></div>
+        <div id="score-list" class="score-list"></div>
+        <div class="feedback-grid">
+          <article><span>做得最好</span><p id="best-point"></p></article>
+          <article><span>主要風險</span><p id="main-risk"></p></article>
+          <article class="feedback-grid__wide"><span>下次可以這樣說</span><p id="suggested-phrase"></p></article>
+        </div>
+        <div class="actions actions--end">
+          <button id="restart-btn" class="button button--primary" type="button">練習另一個情境</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
